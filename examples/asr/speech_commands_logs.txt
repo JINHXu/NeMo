@@ -1,0 +1,568 @@
+jos-MacBook-Pro:NeMo xujinghua$ python /Users/xujinghua/NeMo/examples/asr/speech_to_label.py
+[NeMo W 2021-02-13 22:17:24 experimental:28] Module <class 'nemo.collections.asr.data.audio_to_text.AudioToCharDataset'> is experimental, not ready for production and is not fully supported. Use at your own risk.
+[NeMo W 2021-02-13 22:17:24 experimental:28] Module <class 'nemo.collections.asr.data.audio_to_text.AudioToBPEDataset'> is experimental, not ready for production and is not fully supported. Use at your own risk.
+[NeMo W 2021-02-13 22:17:24 experimental:28] Module <class 'nemo.collections.asr.data.audio_to_text.AudioLabelDataset'> is experimental, not ready for production and is not fully supported. Use at your own risk.
+[NeMo W 2021-02-13 22:17:24 experimental:28] Module <class 'nemo.collections.asr.data.audio_to_text._TarredAudioToTextDataset'> is experimental, not ready for production and is not fully supported. Use at your own risk.
+[NeMo W 2021-02-13 22:17:24 experimental:28] Module <class 'nemo.collections.asr.data.audio_to_text.TarredAudioToCharDataset'> is experimental, not ready for production and is not fully supported. Use at your own risk.
+[NeMo W 2021-02-13 22:17:24 experimental:28] Module <class 'nemo.collections.asr.data.audio_to_text.TarredAudioToBPEDataset'> is experimental, not ready for production and is not fully supported. Use at your own risk.
+[NeMo W 2021-02-13 22:17:25 experimental:28] Module <class 'nemo.collections.asr.losses.ctc.CTCLoss'> is experimental, not ready for production and is not fully supported. Use at your own risk.
+[NeMo W 2021-02-13 22:17:25 experimental:28] Module <class 'nemo.collections.asr.data.audio_to_text_dali.AudioToCharDALIDataset'> is experimental, not ready for production and is not fully supported. Use at your own risk.
+################################################################################
+### WARNING, path does not exist: KALDI_ROOT=/mnt/matylda5/iveselyk/Tools/kaldi-trunk
+###          (please add 'export KALDI_ROOT=<your_path>' in your $HOME/.profile)
+###          (or run as: KALDI_ROOT=<your_path> python <your_script>.py)
+################################################################################
+
+[NeMo W 2021-02-13 22:17:25 nemo_logging:349] /Users/xujinghua/miniconda3/lib/python3.7/site-packages/torchaudio/backend/utils.py:54: UserWarning: "sox" backend is being deprecated. The default backend will be changed to "sox_io" backend in 0.8.0 and "sox" backend will be removed in 0.9.0. Please migrate to "sox_io" backend. Please refer to https://github.com/pytorch/audio/issues/903 for the detail.
+      '"sox" backend is being deprecated. '
+    
+name: MatchboxNet-3x1x64-v1
+model:
+  sample_rate: 16000
+  timesteps: 128
+  repeat: 1
+  dropout: 0.0
+  kernel_size_factor: 1.0
+  labels_full:
+  - bed
+  - bird
+  - cat
+  - dog
+  - down
+  - eight
+  - five
+  - four
+  - go
+  - happy
+  - house
+  - left
+  - marvin
+  - nine
+  - 'no'
+  - 'off'
+  - 'on'
+  - one
+  - right
+  - seven
+  - sheila
+  - six
+  - stop
+  - three
+  - tree
+  - two
+  - up
+  - wow
+  - 'yes'
+  - zero
+  labels_subset:
+  - 'yes'
+  - 'no'
+  - up
+  - down
+  - left
+  - right
+  - 'on'
+  - 'off'
+  - stop
+  - go
+  - unknown
+  - silence
+  labels: ${model.labels_full}
+  train_ds:
+    manifest_filepath: ???
+    sample_rate: ${model.sample_rate}
+    labels: ${model.labels}
+    batch_size: 128
+    shuffle: true
+    is_tarred: false
+    tarred_audio_filepaths: null
+    tarred_shard_strategy: scatter
+    augmentor:
+      shift:
+        prob: 1.0
+        min_shift_ms: -5.0
+        max_shift_ms: 5.0
+      white_noise:
+        prob: 1.0
+        min_level: -90
+        max_level: -46
+  validation_ds:
+    manifest_filepath: ???
+    sample_rate: ${model.sample_rate}
+    labels: ${model.labels}
+    batch_size: 128
+    shuffle: false
+    val_loss_idx: 0
+  test_ds:
+    manifest_filepath: null
+    sample_rate: ${model.sample_rate}
+    labels: ${model.labels}
+    batch_size: 128
+    shuffle: false
+    test_loss_idx: 0
+  preprocessor:
+    _target_: nemo.collections.asr.modules.AudioToMFCCPreprocessor
+    window_size: 0.025
+    window_stride: 0.01
+    window: hann
+    n_mels: 64
+    n_mfcc: 64
+    n_fft: 512
+  spec_augment:
+    _target_: nemo.collections.asr.modules.SpectrogramAugmentation
+    freq_masks: 2
+    time_masks: 2
+    freq_width: 15
+    time_width: 25
+    rect_masks: 5
+    rect_time: 25
+    rect_freq: 15
+  crop_or_pad_augment:
+    _target_: nemo.collections.asr.modules.CropOrPadSpectrogramAugmentation
+    audio_length: ${model.timesteps}
+  encoder:
+    _target_: nemo.collections.asr.modules.ConvASREncoder
+    feat_in: 64
+    activation: relu
+    conv_mask: true
+    jasper:
+    - filters: 128
+      repeat: 1
+      kernel:
+      - 11
+      stride:
+      - 1
+      dilation:
+      - 1
+      dropout: ${model.dropout}
+      residual: false
+      separable: true
+      kernel_size_factor: ${model.kernel_size_factor}
+    - filters: 64
+      repeat: ${model.repeat}
+      kernel:
+      - 13
+      stride:
+      - 1
+      dilation:
+      - 1
+      dropout: ${model.dropout}
+      residual: true
+      separable: true
+      kernel_size_factor: ${model.kernel_size_factor}
+    - filters: 64
+      repeat: ${model.repeat}
+      kernel:
+      - 15
+      stride:
+      - 1
+      dilation:
+      - 1
+      dropout: ${model.dropout}
+      residual: true
+      separable: true
+      kernel_size_factor: ${model.kernel_size_factor}
+    - filters: 64
+      repeat: ${model.repeat}
+      kernel:
+      - 17
+      stride:
+      - 1
+      dilation:
+      - 1
+      dropout: ${model.dropout}
+      residual: true
+      separable: true
+      kernel_size_factor: ${model.kernel_size_factor}
+    - filters: 128
+      repeat: 1
+      kernel:
+      - 29
+      stride:
+      - 1
+      dilation:
+      - 2
+      dropout: ${model.dropout}
+      residual: false
+      separable: true
+      kernel_size_factor: ${model.kernel_size_factor}
+    - filters: 128
+      repeat: 1
+      kernel:
+      - 1
+      stride:
+      - 1
+      dilation:
+      - 1
+      dropout: ${model.dropout}
+      residual: false
+  decoder:
+    _target_: nemo.collections.asr.modules.ConvASRDecoderClassification
+    feat_in: 128
+    return_logits: true
+    pooling_type: avg
+  optim:
+    name: novograd
+    lr: 0.05
+    betas:
+    - 0.95
+    - 0.5
+    weight_decay: 0.001
+    sched:
+      name: PolynomialHoldDecayAnnealing
+      power: 2.0
+      warmup_ratio: 0.05
+      hold_ratio: 0.45
+      min_lr: 0.001
+      last_epoch: -1
+trainer:
+  gpus: 0
+  max_epochs: 200
+  max_steps: null
+  num_nodes: 1
+  accelerator: ddp
+  accumulate_grad_batches: 1
+  checkpoint_callback: false
+  logger: false
+  log_every_n_steps: 1
+  val_check_interval: 1.0
+exp_manager:
+  exp_dir: null
+  name: MatchboxNet-3x1x64-v1
+  create_tensorboard_logger: true
+  create_checkpoint_callback: true
+  create_wandb_logger: false
+  wandb_logger_kwargs:
+    name: null
+    project: null
+
+name: MatchboxNet-3x1x64-v1
+model:
+  sample_rate: 16000
+  timesteps: 128
+  repeat: 1
+  dropout: 0.0
+  kernel_size_factor: 1.0
+  labels_full:
+  - bed
+  - bird
+  - cat
+  - dog
+  - down
+  - eight
+  - five
+  - four
+  - go
+  - happy
+  - house
+  - left
+  - marvin
+  - nine
+  - 'no'
+  - 'off'
+  - 'on'
+  - one
+  - right
+  - seven
+  - sheila
+  - six
+  - stop
+  - three
+  - tree
+  - two
+  - up
+  - wow
+  - 'yes'
+  - zero
+  labels_subset:
+  - 'yes'
+  - 'no'
+  - up
+  - down
+  - left
+  - right
+  - 'on'
+  - 'off'
+  - stop
+  - go
+  - unknown
+  - silence
+  labels: ${model.labels_full}
+  train_ds:
+    manifest_filepath: /Users/xujinghua/google_speech_recognition_v1/train_manifest.json
+    sample_rate: ${model.sample_rate}
+    labels: ${model.labels}
+    batch_size: 128
+    shuffle: true
+    is_tarred: false
+    tarred_audio_filepaths: null
+    tarred_shard_strategy: scatter
+    augmentor:
+      shift:
+        prob: 1.0
+        min_shift_ms: -5.0
+        max_shift_ms: 5.0
+      white_noise:
+        prob: 1.0
+        min_level: -90
+        max_level: -46
+  validation_ds:
+    manifest_filepath: /Users/xujinghua/google_speech_recognition_v1/validation_manifest.json
+    sample_rate: ${model.sample_rate}
+    labels: ${model.labels}
+    batch_size: 128
+    shuffle: false
+    val_loss_idx: 0
+  test_ds:
+    manifest_filepath: /Users/xujinghua/google_speech_recognition_v1/test_manifest.json
+    sample_rate: ${model.sample_rate}
+    labels: ${model.labels}
+    batch_size: 128
+    shuffle: false
+    test_loss_idx: 0
+  preprocessor:
+    _target_: nemo.collections.asr.modules.AudioToMFCCPreprocessor
+    window_size: 0.025
+    window_stride: 0.01
+    window: hann
+    n_mels: 64
+    n_mfcc: 64
+    n_fft: 512
+  spec_augment:
+    _target_: nemo.collections.asr.modules.SpectrogramAugmentation
+    freq_masks: 2
+    time_masks: 2
+    freq_width: 15
+    time_width: 25
+    rect_masks: 5
+    rect_time: 25
+    rect_freq: 15
+  crop_or_pad_augment:
+    _target_: nemo.collections.asr.modules.CropOrPadSpectrogramAugmentation
+    audio_length: ${model.timesteps}
+  encoder:
+    _target_: nemo.collections.asr.modules.ConvASREncoder
+    feat_in: 64
+    activation: relu
+    conv_mask: true
+    jasper:
+    - filters: 128
+      repeat: 1
+      kernel:
+      - 11
+      stride:
+      - 1
+      dilation:
+      - 1
+      dropout: ${model.dropout}
+      residual: false
+      separable: true
+      kernel_size_factor: ${model.kernel_size_factor}
+    - filters: 64
+      repeat: ${model.repeat}
+      kernel:
+      - 13
+      stride:
+      - 1
+      dilation:
+      - 1
+      dropout: ${model.dropout}
+      residual: true
+      separable: true
+      kernel_size_factor: ${model.kernel_size_factor}
+    - filters: 64
+      repeat: ${model.repeat}
+      kernel:
+      - 15
+      stride:
+      - 1
+      dilation:
+      - 1
+      dropout: ${model.dropout}
+      residual: true
+      separable: true
+      kernel_size_factor: ${model.kernel_size_factor}
+    - filters: 64
+      repeat: ${model.repeat}
+      kernel:
+      - 17
+      stride:
+      - 1
+      dilation:
+      - 1
+      dropout: ${model.dropout}
+      residual: true
+      separable: true
+      kernel_size_factor: ${model.kernel_size_factor}
+    - filters: 128
+      repeat: 1
+      kernel:
+      - 29
+      stride:
+      - 1
+      dilation:
+      - 2
+      dropout: ${model.dropout}
+      residual: false
+      separable: true
+      kernel_size_factor: ${model.kernel_size_factor}
+    - filters: 128
+      repeat: 1
+      kernel:
+      - 1
+      stride:
+      - 1
+      dilation:
+      - 1
+      dropout: ${model.dropout}
+      residual: false
+  decoder:
+    _target_: nemo.collections.asr.modules.ConvASRDecoderClassification
+    feat_in: 128
+    return_logits: true
+    pooling_type: avg
+  optim:
+    name: novograd
+    lr: 0.05
+    betas:
+    - 0.95
+    - 0.5
+    weight_decay: 0.001
+    sched:
+      name: PolynomialHoldDecayAnnealing
+      power: 2.0
+      warmup_ratio: 0.05
+      hold_ratio: 0.45
+      min_lr: 0.001
+      last_epoch: -1
+trainer:
+  gpus: 0
+  max_epochs: 200
+  max_steps: null
+  num_nodes: 1
+  accelerator: ddp
+  accumulate_grad_batches: 1
+  checkpoint_callback: false
+  logger: false
+  log_every_n_steps: 1
+  val_check_interval: 1.0
+exp_manager:
+  exp_dir: null
+  name: MatchboxNet-3x1x64-v1
+  create_tensorboard_logger: true
+  create_checkpoint_callback: true
+  create_wandb_logger: false
+  wandb_logger_kwargs:
+    name: null
+    project: null
+
+bed
+bird
+cat
+dog
+down
+eight
+five
+four
+go
+happy
+house
+left
+marvin
+nine
+no
+off
+on
+one
+right
+seven
+sheila
+six
+stop
+three
+tree
+two
+up
+wow
+yes
+zero
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+[NeMo I 2021-02-13 22:17:26 exp_manager:183] Experiments will be logged at /Users/xujinghua/NeMo/nemo_experiments/MatchboxNet-3x1x64-v1/2021-02-13_22-17-26
+[NeMo I 2021-02-13 22:17:26 exp_manager:519] TensorboardLogger has been set up
+[NeMo W 2021-02-13 22:17:26 exp_manager:562] trainer had a weights_save_path of cwd(). This was ignored.
+[NeMo I 2021-02-13 22:17:26 collections:256] Filtered duration for loading collection is 0.000000.
+[NeMo I 2021-02-13 22:17:26 collections:259] # 51088 files loaded accounting to # 30 labels
+[NeMo I 2021-02-13 22:17:26 collections:256] Filtered duration for loading collection is 0.000000.
+[NeMo I 2021-02-13 22:17:26 collections:259] # 6798 files loaded accounting to # 30 labels
+[NeMo I 2021-02-13 22:17:27 collections:256] Filtered duration for loading collection is 0.000000.
+[NeMo I 2021-02-13 22:17:27 collections:259] # 6835 files loaded accounting to # 30 labels
+[NeMo I 2021-02-13 22:17:27 modelPT:597] Optimizer config = Novograd (
+    Parameter Group 0
+        amsgrad: False
+        betas: [0.95, 0.5]
+        eps: 1e-08
+        grad_averaging: False
+        lr: 0.05
+        weight_decay: 0.001
+    )
+[NeMo I 2021-02-13 22:17:27 lr_scheduler:562] Scheduler "<nemo.core.optim.lr_scheduler.PolynomialHoldDecayAnnealing object at 0x15d90a160>" 
+    will be used during training (effective maximum steps = 2000) - 
+    Parameters : 
+    (power: 2.0
+    warmup_ratio: 0.05
+    hold_ratio: 0.45
+    min_lr: 0.001
+    last_epoch: -1
+    max_steps: 2000
+    )
+
+  | Name              | Type                             | Params
+-----------------------------------------------------------------------
+0 | preprocessor      | AudioToMFCCPreprocessor          | 0     
+1 | encoder           | ConvASREncoder                   | 73.3 K
+2 | decoder           | ConvASRDecoderClassification     | 3.9 K 
+3 | loss              | CrossEntropyLoss                 | 0     
+4 | spec_augmentation | SpectrogramAugmentation          | 0     
+5 | crop_or_pad       | CropOrPadSpectrogramAugmentation | 0     
+6 | _accuracy         | TopKClassificationAccuracy       | 0     
+[NeMo W 2021-02-13 22:17:27 nemo_logging:349] /Users/xujinghua/miniconda3/lib/python3.7/site-packages/pytorch_lightning/utilities/distributed.py:45: UserWarning: The dataloader, val dataloader 0, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 4 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+      warnings.warn(*args, **kwargs)
+    
+Validation sanity check: 0it [00:00, ?it/s][NeMo W 2021-02-13 22:17:28 nemo_logging:349] /Users/xujinghua/miniconda3/lib/python3.7/site-packages/torch/functional.py:516: UserWarning: stft will require the return_complex parameter be explicitly  specified in a future PyTorch release. Use return_complex=False  to preserve the current behavior or return_complex=True to return  a complex output. (Triggered internally at  ../aten/src/ATen/native/SpectralOps.cpp:653.)
+      normalized, onesided, return_complex)
+    
+[NeMo W 2021-02-13 22:17:28 nemo_logging:349] /Users/xujinghua/miniconda3/lib/python3.7/site-packages/torch/functional.py:516: UserWarning: The function torch.rfft is deprecated and will be removed in a future PyTorch release. Use the new torch.fft module functions, instead, by importing torch.fft and calling torch.fft.fft or torch.fft.rfft. (Triggered internally at  ../aten/src/ATen/native/SpectralOps.cpp:590.)
+      normalized, onesided, return_complex)
+    
+Validation sanity check: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:02<00:00,  1.05s/it][NeMo W 2021-02-13 22:17:30 nemo_logging:349] /Users/xujinghua/miniconda3/lib/python3.7/site-packages/pytorch_lightning/utilities/distributed.py:45: UserWarning: The validation_epoch_end should not return anything as of 9.1.to log, use self.log(...) or self.write(...) directly in the LightningModule
+      warnings.warn(*args, **kwargs)
+    
+[NeMo W 2021-02-13 22:17:30 nemo_logging:349] /Users/xujinghua/miniconda3/lib/python3.7/site-packages/pytorch_lightning/utilities/distributed.py:45: UserWarning: The dataloader, train dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 4 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+      warnings.warn(*args, **kwargs)
+    
+Epoch 0: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 454/454 [09:37<00:00,  1.27s/it, loss=1.220, v_num=7-26E
+poch 0: val_loss reached 0.98421 (best 0.98421), saving model to /Users/xujinghua/NeMo/nemo_experiments/MatchboxNet-3x1x64-v1/2021-02-13_22-17-26/checkpoints/MatchboxNet-3x1x64-v1---val_loss=0.98-epoch=0.ckpt as top 3
+Epoch 1: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 454/454 [09:06<00:00,  1.20s/it, loss=1.052, v_num=7-26E
+poch 1: val_loss reached 0.81926 (best 0.81926), saving model to /Users/xujinghua/NeMo/nemo_experiments/MatchboxNet-3x1x64-v1/2021-02-13_22-17-26/checkpoints/MatchboxNet-3x1x64-v1---val_loss=0.82-epoch=1.ckpt as top 3
+Epoch 2: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 454/454 [08:53<00:00,  1.17s/it, loss=0.831, v_num=7-26E
+poch 2: val_loss reached 0.36670 (best 0.36670), saving model to /Users/xujinghua/NeMo/nemo_experiments/MatchboxNet-3x1x64-v1/2021-02-13_22-17-26/checkpoints/MatchboxNet-3x1x64-v1---val_loss=0.37-epoch=2.ckpt as top 3
+Epoch 3: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 454/454 [08:48<00:00,  1.16s/it, loss=0.651, v_num=7-26E
+poch 3: val_loss reached 0.23599 (best 0.23599), saving model to /Users/xujinghua/NeMo/nemo_experiments/MatchboxNet-3x1x64-v1/2021-02-13_22-17-26/checkpoints/MatchboxNet-3x1x64-v1---val_loss=0.24-epoch=3.ckpt as top 3
+Epoch 4: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 454/454 [09:02<00:00,  1.19s/it, loss=0.615, v_num=7-26E
+poch 4: val_loss reached 0.18878 (best 0.18878), saving model to /Users/xujinghua/NeMo/nemo_experiments/MatchboxNet-3x1x64-v1/2021-02-13_22-17-26/checkpoints/MatchboxNet-3x1x64-v1---val_loss=0.19-epoch=4.ckpt as top 3
+Saving latest checkpoint...
+Epoch 4: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 454/454 [09:02<00:00,  1.19s/it, loss=0.615, v_num=7-26]
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+[NeMo W 2021-02-13 23:02:58 nemo_logging:349] /Users/xujinghua/miniconda3/lib/python3.7/site-packages/pytorch_lightning/utilities/distributed.py:45: UserWarning: The dataloader, test dataloader 0, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 4 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+      warnings.warn(*args, **kwargs)
+    
+Testing: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 54/54 [00:38<00:00,  1.68it/s][NeMo W 2021-02-13 23:03:37 nemo_logging:349] /Users/xujinghua/miniconda3/lib/python3.7/site-packages/pytorch_lightning/utilities/distributed.py:45: UserWarning: The testing_epoch_end should not return anything as of 9.1.to log, use self.log(...) or self.write(...) directly in the LightningModule
+      warnings.warn(*args, **kwargs)
+    
+--------------------------------------------------------------------------------
+DATALOADER:0 TEST RESULTS
+{'test_epoch_top@1': tensor([[0.9457]]), 'test_loss': tensor(0.1890)}
+--------------------------------------------------------------------------------
+Testing: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 54/54 [00:38<00:00,  1.41it/s]

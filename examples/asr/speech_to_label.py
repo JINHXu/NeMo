@@ -103,19 +103,68 @@ python speech_to_label.py \
     +trainer.amp_level=O1  # needed if using PyTorch < 1.6
 
 """
+
+# for speech commands recognitioin, first run `process_speech_commands_data.py` to download data and prepare manifest files
 import pytorch_lightning as pl
+import torch
+
+from omegaconf import OmegaConf
 
 from nemo.collections.asr.models import EncDecClassificationModel
 from nemo.core.config import hydra_runner
 from nemo.utils.exp_manager import exp_manager
 
 
-@hydra_runner(config_path="conf", config_name="matchboxnet_3x1x64_v1")
+@hydra_runner(config_path="/Users/xujinghua/NeMo/examples/asr/conf", config_name="matchboxnet_3x1x64_v1")
 def main(cfg):
-    trainer = pl.Trainer(**cfg.trainer)
-    exp_manager(trainer, cfg.get("exp_manager", None))
-    asr_model = EncDecClassificationModel(cfg=cfg.model, trainer=trainer)
 
+    print(OmegaConf.to_yaml(cfg))
+
+    # update config with manifest file paths
+    cfg.model.train_ds.manifest_filepath = '/Users/xujinghua/google_speech_recognition_v1/train_manifest.json'
+    cfg.model.validation_ds.manifest_filepath = '/Users/xujinghua/google_speech_recognition_v1/validation_manifest.json'
+    cfg.model.test_ds.manifest_filepath = '/Users/xujinghua/google_speech_recognition_v1/test_manifest.json'
+    
+    print(OmegaConf.to_yaml(cfg))
+    
+    # Preserve some useful parameters
+    labels = cfg.model.labels
+    # sample_rate = cfg.sample_rate
+
+    for label in labels:
+        print(label)
+
+        # print(sample_rate)
+
+    '''
+    cfg.trainer.gpus=2 
+    cfg.trainer.accelerator="ddp" 
+    cfg.trainer.max_epochs=200 
+    cfg.trainer.precision=16 
+    
+    exp_manager.create_wandb_logger=True 
+    exp_manager.wandb_logger_kwargs.name="MatchboxNet-3x1x64-v1" 
+    exp_manager.wandb_logger_kwargs.project="MatchboxNet-v1" 
+    '''
+
+    # Lets modify some trainer configs for this demo
+    # Checks if we have GPU available and uses it
+    cuda = 1 if torch.cuda.is_available() else 0
+    cfg.trainer.gpus = cuda
+
+    # Reduces maximum number of epochs to 5 for quick demonstration
+    cfg.trainer.max_epochs = 5
+
+    # Remove distributed training flags
+    cfg.trainer.accelerator = None
+            
+    # setting up trainer
+    trainer = pl.Trainer(**cfg.trainer)
+    # setting up experiment manager
+    exp_manager(trainer, cfg.get("exp_manager", None))
+    # build a MatchboxNet model
+    asr_model = EncDecClassificationModel(cfg=cfg.model, trainer=trainer)
+    # train a MatchboxNet model
     trainer.fit(asr_model)
 
     if hasattr(cfg.model, 'test_ds') and cfg.model.test_ds.manifest_filepath is not None:
@@ -123,7 +172,10 @@ def main(cfg):
         trainer = pl.Trainer(gpus=gpu)
         if asr_model.prepare_test(trainer):
             trainer.test(asr_model)
+    
 
 
 if __name__ == '__main__':
+    # config = OmegaConf.load(config_path)
+    # config_path="/Users/xujinghua/NeMo/examples/asr/conf"
     main()  # noqa pylint: disable=no-value-for-parameter
