@@ -1,0 +1,5 @@
+{"audio_filepath": "/Users/xujinghua/NeMo/data/an4/wav/an4_clstk/mjda/cen2-mjda-b.wav", "duration": 2.2, "label": "mjda"}
+{"audio_filepath": "/Users/xujinghua/NeMo/data/an4/wav/an4_clstk/mjgk/cen8-mjgk-b.wav", "duration": 2.1, "label": "mjgk"}
+{"audio_filepath": "/Users/xujinghua/NeMo/data/an4/wav/an4_clstk/mrab/an74-mrab-b.wav", "duration": 2.9, "label": "mrab"}
+{"audio_filepath": "/Users/xujinghua/NeMo/data/an4/wav/an4_clstk/fejs/cen3-fejs-b.wav", "duration": 2.8, "label": "fejs"}
+{"audio_filepath": "/Users/xujinghua/NeMo/data/an4/wav/an4_clstk/mcsc/cen2-mcsc-b.wav", "duration": 3.1, "label": "mcsc"}

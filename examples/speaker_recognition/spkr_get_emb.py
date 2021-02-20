@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import os
+import torch
+from omegaconf import OmegaConf
 
 import pytorch_lightning as pl
 from omegaconf.listconfig import ListConfig
@@ -39,26 +41,50 @@ Place pretrained model in ${EXP_DIR}/${EXP_NAME} with spkr.nemo
 
 See https://github.com/NVIDIA/NeMo/blob/main/tutorials/speaker_recognition/Speaker_Recognition_Verification.ipynb for notebook tutorial
 """
-
+os.environ["OMP_NUM_THREADS"] = '1'
 seed_everything(42)
 
 
-@hydra_runner(config_path="conf", config_name="config")
+@hydra_runner(config_path="/Users/xujinghua/NeMo/examples/speaker_recognition/conf", config_name="SpeakerNet_verification_3x2x512.yaml")
 def main(cfg):
 
     logging.info(f'Hydra config: {cfg.pretty()}')
+    
+    cuda = 1 if torch.cuda.is_available() else 0
+    cfg.trainer.gpus = cuda
+    cfg.trainer.accelerator = None
+
     if (isinstance(cfg.trainer.gpus, ListConfig) and len(cfg.trainer.gpus) > 1) or (
         isinstance(cfg.trainer.gpus, (int, str)) and int(cfg.trainer.gpus) > 1
     ):
         logging.info("changing gpus to 1 to minimize DDP issues while extracting embeddings")
-        cfg.trainer.gpus = 1
+        cuda = 1 if torch.cuda.is_available() else 0
+        cfg.trainer.gpus = cuda
+
         cfg.trainer.accelerator = None
+
     trainer = pl.Trainer(**cfg.trainer)
     log_dir = exp_manager(trainer, cfg.get("exp_manager", None))
-    model_path = os.path.join(log_dir, '..', 'spkr.nemo')
+    model_path = '/Users/xujinghua/NeMo/nemo_experiments/SpeakerNet/spkr.nemo'
+
     speaker_model = ExtractSpeakerEmbeddingsModel.restore_from(model_path)
-    speaker_model.setup_test_data(cfg.model.test_ds)
-    trainer.test(speaker_model)
+    test_config = OmegaConf.create(dict(
+        manifest_filepath = '/Users/xujinghua/NeMo/embeddings_manifest.json',
+        sample_rate = 16000,
+        labels = None,
+        batch_size = 1,
+        shuffle = False,
+        time_length = 8,
+        embedding_dir='/Users/xujinghua/NeMo/'
+    ))
+    print(OmegaConf.to_yaml(test_config))
+    speaker_model.setup_test_data(test_config)
+
+    # cfg.model.test_ds.manifest_filepath = '/Users/xujinghua/NeMo/embeddings_manifest.json'
+
+    # speaker_model.setup_test_data(test_config)
+    r = trainer.test(speaker_model)
+    print(r)
 
 
 if __name__ == '__main__':

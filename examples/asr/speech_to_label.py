@@ -125,14 +125,14 @@ def main(cfg):
     cfg.model.validation_ds.manifest_filepath = '/Users/xujinghua/google_speech_recognition_v1/validation_manifest.json'
     cfg.model.test_ds.manifest_filepath = '/Users/xujinghua/google_speech_recognition_v1/test_manifest.json'
     
-    print(OmegaConf.to_yaml(cfg))
+    # print(OmegaConf.to_yaml(cfg))
     
     # Preserve some useful parameters
-    labels = cfg.model.labels
+    # labels = cfg.model.labels
     # sample_rate = cfg.sample_rate
 
-    for label in labels:
-        print(label)
+    # for label in labels:
+        # print(label)
 
         # print(sample_rate)
 
@@ -147,21 +147,36 @@ def main(cfg):
     exp_manager.wandb_logger_kwargs.project="MatchboxNet-v1" 
     '''
 
+    # colab tutorial default setting
     # Lets modify some trainer configs for this demo
     # Checks if we have GPU available and uses it
-    cuda = 1 if torch.cuda.is_available() else 0
-    cfg.trainer.gpus = cuda
+    # cuda = 1 if torch.cuda.is_available() else 0
+    # cfg.trainer.gpus = cuda
 
     # Reduces maximum number of epochs to 5 for quick demonstration
-    cfg.trainer.max_epochs = 5
+    # cfg.trainer.max_epochs = 5
 
     # Remove distributed training flags
-    cfg.trainer.accelerator = None
+    # cfg.trainer.accelerator = None
             
     # setting up trainer
-    trainer = pl.Trainer(**cfg.trainer)
+    # trainer = pl.Trainer(**cfg.trainer)
+
+    # fast training with flags
+
+    # cfg.trainer.max_epochs=200 
+
+    # all flags to speed up the process
+    # trainer = pl.Trainer(**cfg.trainer, amp_level='O1', precision=16, gpus=2, num_nodes=2, accelerator='ddp')
+
+    # Trainer with a distributed backend:
+    # trainer = Trainer(gpus=2, num_nodes=2, accelerator='ddp')
+
     # setting up experiment manager
-    exp_manager(trainer, cfg.get("exp_manager", None))
+    # The exp_dir provides a path to the current experiment for easy access
+    exp_dir = exp_manager(trainer, cfg.get("exp_manager", None))
+
+
     # build a MatchboxNet model
     asr_model = EncDecClassificationModel(cfg=cfg.model, trainer=trainer)
     # train a MatchboxNet model
